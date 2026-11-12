@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Health Monitoring Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #e0f2fe, #eef2ff);
+      --card-gradient: linear-gradient(145deg, #ffffff, #e0f7ff);
+      --accent: #2563eb;
+      --accent-soft: rgba(37, 99, 235, 0.12);
+      --text-main: #0f172a;
+      --text-muted: #6b7280;
+      --danger: #dc2626;
+      --shadow-soft: 0 18px 35px rgba(15, 23, 42, 0.12);
+      --radius-xl: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .pill {
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: var(--card-gradient);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-soft);
+      padding: 16px 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .value {
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+
+    .unit {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .bp-value {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    .status-label {
+      font-size: 0.8rem;
+      margin-top: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.1);
+      color: #047857;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #22c55e;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+
+    .chart-card canvas {
+      width: 100% !important;
+      height: 220px !important;
+    }
+
+    .small-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .location-wrapper {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 800px) {
+      .location-wrapper {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .map-frame {
+      width: 100%;
+      height: 260px;
+      border: none;
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .location-text {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    .timestamp {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <header class="header">
+      <div>
+        <div class="title">Real-Time Health Dashboard</div>
+        <div class="subtitle">Node: <strong>58_Health_1 / 1_Sensor_Data</strong></div>
+      </div>
+      <div class="pill" id="connectionStatus">Connecting…</div>
+    </header>
+
+    <!-- Sensor cards -->
+    <section class="grid">
+      <div class="card">
+        <h3>Heart Rate</h3>
+        <div class="value-row">
+          <div class="value" id="hrValue">--</div>
+          <div class="unit">bpm</div>
+        </div>
+        <div class="small-label">Ideal resting: 60-100 bpm</div>
+      </div>
+
+      <div class="card">
+        <h3>SpO₂</h3>
+        <div class="value-row">
+          <div class="value" id="spo2Value">--</div>
+          <div class="unit">%</div>
+        </div>
+        <div class="small-label">Healthy: 95-100%</div>
+      </div>
+
+      <div class="card">
+        <h3>Blood Pressure</h3>
+        <div class="value-row">
+          <div class="bp-value" id="bpValue">-- / --</div>
+        </div>
+        <div class="small-label">Example: 120 / 80 mmHg</div>
+      </div>
+
+      <div class="card">
+        <h3>Temperature</h3>
+        <div class="value-row">
+          <div class="value" id="tempValue">--</div>
+          <div class="unit">°C</div>
+        </div>
+        <div class="small-label">Normal: 36.5-37.5 °C</div>
+      </div>
+
+      <div class="card">
+        <h3>Humidity</h3>
+        <div class="value-row">
+          <div class="value" id="humValue">--</div>
+          <div class="unit">%</div>
+        </div>
+        <div class="small-label">Comfort: 40-60%</div>
+      </div>
+    </section>
+
+    <!-- Charts -->
+    <section class="charts-grid">
+      <div class="card chart-card">
+        <h3>Heart Rate Trend</h3>
+        <canvas id="hrChart"></canvas>
+      </div>
+      <div class="card chart-card">
+        <h3>SpO₂ Trend</h3>
+        <canvas id="spo2Chart"></canvas>
+      </div>
+      <div class="card chart-card">
+        <h3>Temperature Trend</h3>
+        <canvas id="tempChart"></canvas>
+      </div>
+      <div class="card chart-card">
+        <h3>Humidity Trend</h3>
+        <canvas id="humChart"></canvas>
+      </div>
+    </section>
+
+    <!-- Location -->
+    <section class="location-wrapper">
+      <div class="card">
+        <h3>Live Location</h3>
+        <p class="location-text">
+          Reading from <code>58_Health_1 / 2_Location</code> (fields:
+          <code>lat</code> and <code>lng</code>).
+        </p>
+        <p class="location-text">
+          Lat: <strong id="latVal">--</strong>,
+          Lng: <strong id="lngVal">--</strong>
+        </p>
+        <p class="location-text" id="locStatus">Waiting for location…</p>
+      </div>
+
+      <div>
+        <iframe
+          id="mapFrame"
+          class="map-frame"
+          src=""
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+        ></iframe>
+        <div class="timestamp" id="updateTime">Last update: --</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Firebase SDKs (v10 modular) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getAnalytics,
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+    import {
+      getDatabase,
+      ref,
+      onValue,
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    // Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBzXzocbdytn4N8vLrT-V2JYZ8pgqWrbC0",
+      authDomain: "self-balancing-7a9fe.firebaseapp.com",
+      databaseURL: "https://self-balancing-7a9fe-default-rtdb.firebaseio.com",
+      projectId: "self-balancing-7a9fe",
+      storageBucket: "self-balancing-7a9fe.firebasestorage.app",
+      messagingSenderId: "1044959372723",
+      appId: "1:1044959372723:web:7e1f73307107cf91ba97c6",
+      measurementId: "G-357J7ZXYED",
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    getAnalytics(app);
+    const db = getDatabase(app);
+
+    // DOM elements
+    const hrEl = document.getElementById("hrValue");
+    const spo2El = document.getElementById("spo2Value");
+    const bpEl = document.getElementById("bpValue");
+    const tempEl = document.getElementById("tempValue");
+    const humEl = document.getElementById("humValue");
+    const connEl = document.getElementById("connectionStatus");
+    const latEl = document.getElementById("latVal");
+    const lngEl = document.getElementById("lngVal");
+    const locStatusEl = document.getElementById("locStatus");
+    const mapFrame = document.getElementById("mapFrame");
+    const updateTimeEl = document.getElementById("updateTime");
+
+    // Fixed-length arrays for charts
+    const MAX_POINTS = 20;
+    const labels = [];
+    const hrData = [];
+    const spo2Data = [];
+    const tempData = [];
+    const humData = [];
+
+    // Helper: push data with fixed length
+    function pushFixed(arr, value) {
+      arr.push(value);
+      if (arr.length > MAX_POINTS) arr.shift();
+    }
+
+    function pushLabel() {
+      const t = new Date().toLocaleTimeString();
+      labels.push(t);
+      if (labels.length > MAX_POINTS) labels.shift();
+    }
+
+    // Chart configs with fixed Y ranges
+    const hrCtx = document.getElementById("hrChart").getContext("2d");
+    const spo2Ctx = document.getElementById("spo2Chart").getContext("2d");
+    const tempCtx = document.getElementById("tempChart").getContext("2d");
+    const humCtx = document.getElementById("humChart").getContext("2d");
+
+    const commonOptions = (min, max) => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          grid: { display: false },
+        },
+        y: {
+          min: min,
+          max: max,
+        },
+      },
+      plugins: {
+        legend: { display: false },
+      },
+    });
+
+    const hrChart = new Chart(hrCtx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "HR",
+            data: hrData,
+            tension: 0.35,
+          },
+        ],
+      },
+      options: commonOptions(40, 160),
+    });
+
+    const spo2Chart = new Chart(spo2Ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "SpO2",
+            data: spo2Data,
+            tension: 0.35,
+          },
+        ],
+      },
+      options: commonOptions(80, 100),
+    });
+
+    const tempChart = new Chart(tempCtx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Temp",
+            data: tempData,
+            tension: 0.35,
+          },
+        ],
+      },
+      options: commonOptions(20, 45),
+    });
+
+    const humChart = new Chart(humCtx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Humidity",
+            data: humData,
+            tension: 0.35,
+          },
+        ],
+      },
+      options: commonOptions(0, 100),
+    });
+
+    function updateCharts() {
+      hrChart.update();
+      spo2Chart.update();
+      tempChart.update();
+      humChart.update();
+    }
+
+    // ====== RTDB LISTENERS ======
+
+    // Sensor data
+    const sensorRef = ref(db, "58_Health_1/1_Sensor_Data");
+
+    onValue(
+      sensorRef,
+      (snap) => {
+        connEl.textContent = "Live";
+        connEl.style.background = "rgba(22, 163, 74, 0.12)";
+        connEl.style.color = "#16a34a";
+
+        const v = snap.val() || {};
+
+        const hr = Number(v["1_HR"] ?? 0);
+        const spo2 = Number((v["2_SP02"] || v["2_SPO2"]) ?? 0);
+        const bp = v["3_BP"] ?? "--/--";
+        const temp = Number(v["4_Temp"] ?? 0);
+        const hum = Number(v["5_Hum"] ?? 0);
+
+        console.log("Sensor data received:", { hr, spo2, bp, temp, hum });
+
+        hrEl.textContent = isNaN(hr) || hr === 0 ? "--" : hr;
+        spo2El.textContent = isNaN(spo2) || spo2 === 0 ? "--" : spo2;
+        bpEl.textContent = bp;
+        tempEl.textContent = isNaN(temp) ? "--" : temp.toFixed(1);
+        humEl.textContent = isNaN(hum) ? "--" : hum.toFixed(1);
+
+        // Add new point to charts
+        pushLabel();
+        pushFixed(hrData, hr || null);
+        pushFixed(spo2Data, spo2 || null);
+        pushFixed(tempData, temp || null);
+        pushFixed(humData, hum || null);
+        updateCharts();
+
+        updateTimeEl.textContent =
+          "Last update: " + new Date().toLocaleTimeString();
+      },
+      (err) => {
+        connEl.textContent = "Error";
+        connEl.style.background = "rgba(239, 68, 68, 0.12)";
+        connEl.style.color = "#dc2626";
+        console.error("Sensor listener error:", err);
+      }
+    );
+
+    // Get user's current location using browser Geolocation API
+    function updateUserLocation() {
+      if (!navigator.geolocation) {
+        locStatusEl.textContent = "Geolocation not supported by your browser.";
+        locStatusEl.style.color = "#dc2626";
+        return;
+      }
+
+      locStatusEl.textContent = "Requesting location permission...";
+      locStatusEl.style.color = "#f59e0b";
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const accuracy = position.coords.accuracy;
+
+          console.log("Location obtained:", { lat, lng, accuracy });
+
+          latEl.textContent = lat.toFixed(5);
+          lngEl.textContent = lng.toFixed(5);
+          locStatusEl.textContent = `Location updated! (±${Math.round(accuracy)}m accuracy)`;
+          locStatusEl.style.color = "#16a34a";
+
+          // Update map
+          mapFrame.src = `https://www.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
+
+          // Optional: Save to Firebase
+          const locRef = ref(db, "58_Health_1/2_Location");
+          import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js")
+            .then(({ set }) => {
+              set(locRef, { lat, lng, timestamp: Date.now() })
+                .then(() => console.log("Location saved to Firebase"))
+                .catch((err) => console.error("Failed to save location:", err));
+            });
+        },
+        (error) => {
+          let errorMsg = "";
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMsg = "Location permission denied. Please allow location access.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMsg = "Location information unavailable.";
+              break;
+            case error.TIMEOUT:
+              errorMsg = "Location request timed out.";
+              break;
+            default:
+              errorMsg = "Unknown error occurred.";
+          }
+          locStatusEl.textContent = errorMsg;
+          locStatusEl.style.color = "#dc2626";
+          console.error("Geolocation error:", error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        }
+      );
+    }
+
+    // Request location on page load (works on both desktop and mobile)
+    updateUserLocation();
+
+    // Add button to manually trigger location request
+    console.log("Location tracking enabled. Permission will be requested on page load.");
+
+    // Optional: Update location every 30 seconds
+    setInterval(updateUserLocation, 30000);
+  </script>
+</body>
+</html>
